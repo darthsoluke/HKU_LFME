@@ -48,6 +48,8 @@ if __name__ == "__main__":
     parser.add_argument('--save_model_every_checkpoint', action='store_true')
     args = parser.parse_args()
 
+    model_name=args.dataset+args.algorithm+args.task+str(args.seed)+str(args.steps)+str(args.test_envs)+".pkl"
+
     # If we ever want to implement checkpointing, just persist these values
     # every once in a while, and then load them from disk here.
     start_step = 0
@@ -185,6 +187,7 @@ if __name__ == "__main__":
     n_steps = args.steps or dataset.N_STEPS
     checkpoint_freq = args.checkpoint_freq or dataset.CHECKPOINT_FREQ
 
+    # 保存最后的模型
     def save_checkpoint(filename):
         if args.skip_model_save:
             return
@@ -196,6 +199,7 @@ if __name__ == "__main__":
             "model_hparams": hparams,
             "model_dict": algorithm.state_dict()
         }
+
         torch.save(save_dict, os.path.join(args.output_dir, filename))
 
 
@@ -259,7 +263,8 @@ if __name__ == "__main__":
             if args.save_model_every_checkpoint:
                 save_checkpoint(f'model_step{step}.pkl')
 
-    #save_checkpoint('model.pkl')
+
+    save_checkpoint(model_name)
 
     with open(os.path.join(args.output_dir, 'done'), 'w') as f:
         f.write('done')

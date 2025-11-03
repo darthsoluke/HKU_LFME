@@ -116,8 +116,8 @@ def download_pacs(data_dir):
     # Original URL: http://www.eecs.qmul.ac.uk/~dl307/project_iccv2017
     full_path = stage_path(data_dir, "PACS")
 
-    download_and_extract("https://drive.google.com/uc?id=1JFr8f805nMUelQWWmfnJR3y4_SYoN5Pd",
-                         os.path.join(data_dir, "PACS.zip"))
+    download_and_extract("https://www.kaggle.com/api/v1/datasets/download/nickfratto/pacs-dataset",
+                         os.path.join(data_dir, "PACS.zip"),remove=False)
 
     os.rename(os.path.join(data_dir, "kfold"),
               full_path)
@@ -170,13 +170,9 @@ def download_terra_incognita(data_dir):
 
     full_path = stage_path(data_dir, "terra_incognita")
 
-    download_and_extract(
-        "https://lilablobssc.blob.core.windows.net/caltechcameratraps/eccv_18_all_images_sm.tar.gz",
-        os.path.join(full_path, "terra_incognita_images.tar.gz"))
+    #download_and_extract("https://storage.googleapis.com/public-datasets-lila/caltechcameratraps/eccv_18_all_images_sm.tar.gz",os.path.join(full_path, "eccv_18_all_images_sm.tar.gz"),remove = False)
 
-    download_and_extract(
-        "https://lilablobssc.blob.core.windows.net/caltechcameratraps/labels/caltech_camera_traps.json.zip",
-        os.path.join(full_path, "caltech_camera_traps.json.zip"))
+    #download_and_extract("https://storage.googleapis.com/public-datasets-lila/caltechcameratraps/eccv_18_annotations.tar.gz",os.path.join(full_path, "eccv_18_annotations.tar.gz"))
 
     include_locations = ["38", "46", "100", "43"]
 
@@ -186,7 +182,7 @@ def download_terra_incognita(data_dir):
     ]
 
     images_folder = os.path.join(full_path, "eccv_18_all_images_sm/")
-    annotations_file = os.path.join(full_path, "caltech_images_20210113.json")
+    annotations_file = os.path.join(full_path, "eccv_18_annotation_files/train_annotations.json")
     destination_folder = full_path
 
     stats = {}
@@ -264,7 +260,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # download_mnist(args.data_dir)
-    # download_pacs(args.data_dir)
+    download_pacs(args.data_dir)
     # download_office_home(args.data_dir)
     # download_domain_net(args.data_dir)
     # download_vlcs(args.data_dir)

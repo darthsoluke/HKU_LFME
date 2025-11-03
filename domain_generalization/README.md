@@ -2,25 +2,35 @@
 
 This is a pytorch implementation of: LFME: A Simple Framework for Learning from Multiple Experts in Domain
 Generalization. We use the data-spllit, pre-process, hyper-parameter settings, and evaluation protocals all from the [DomainBed benchmark](https://github.com/facebookresearch/DomainBed). Our work is mainly at the **algorithms.py** files, please refer to them for details.
-
+### Conda & python configration
+```sh
+#make sure you are now at "domain_generalization/domainbed"
+conda create -n LFME python=3.13
+conda activate LFME
+pip install -r requirements.txt
+```
 ## Quick start
 
 Download the datasets:
 
+Make sure you are now at folder: "domain_generalization"
 ```sh
-python3 -m domainbed.scripts.download \
+# Refer to specific code in this download script, you may download dataset you intend to train with.
+#PACS is set to be the only dataset to be downloaded at initial.
+python -m domainbed.scripts.download \
        --data_dir=./domainbed/data
 ```
 
 Train a model:
 
 ```sh
-python3 -m domainbed.scripts.train\
+python -m domainbed.scripts.train\
        --data_dir=./domainbed/data/PACS/\
        --algorithm LFME\
        --dataset PACS\
        --test_env 0
 ```
+
 
 Launch a sweep:
 
@@ -51,4 +61,12 @@ To view the results of your sweep:
 ```sh
 python -m domainbed.scripts.collect_results\
        --input_dir=/my/sweep/output/path
+```
+
+## Reasoning
+If you save your .pkl file to dictionary, .e.g. "domain_generalization/domainbed/train_output/xxxxx.pkl"
+```shell
+# Make sure you are now at domain_generalization
+# To change algorithm or something else, refer to code at domainbed/scripts/demo.py
+python -m domainbed.scripts.demo
 ```
