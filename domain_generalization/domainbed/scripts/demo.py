@@ -10,15 +10,14 @@ from domainbed import algorithms, datasets, hparams_registry
 
 domainbed_path = os.path.dirname(os.path.abspath(domainbed.__file__))
 img_path = os.path.join(domainbed_path,"data/pacs_data/pacs_data/art_painting/dog/pic_414.jpg")
-img_dic_path = os.path.join(domainbed_path,"data/pacs_data/pacs_data/photo/dog")
+img_dic_path = os.path.join(domainbed_path,"data/pacs_data/pacs_data/sketch/dog")
+ckpt_path="outputs/PACS_te3/PACSLFMEdomain_generalization0None[3].pkl"
 
-ckpt_path="train_output/PACSLFMEdomain_generalization0None[0].pkl"
-
-
+# Device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 """
 Load Checkpoint file
 """
-device = "cuda" if torch.cuda.is_available() else "cpu"
 
 ckpt = torch.load(ckpt_path, map_location=device)
 
@@ -41,7 +40,8 @@ model = AlgorithmClass(
     hparams=hparams,
 )
 
-model.load_state_dict(state_dict,strict=True)
+model.load_state_dict(state_dict)
+model.to(device)
 model.eval()
 
 transform_eval = transforms.Compose(
@@ -59,27 +59,25 @@ def preprocess_image(image_path):
     img = Image.open(image_path).convert("RGB")
     x = transform_eval(img)
     x=x.unsqueeze(0)
-    return x
+    return x.to(device,non_blocking=True)
 
 """
 Run reasoning
 """
-@torch.no_grad()
+@torch.inference_mode()
 def predict_single_image(img_path):
     x = preprocess_image(img_path)
     logits = model.predict(x)
     probs = torch.softmax(logits,dim = 1)
     pred_class = probs.argmax(dim=1).item()
 
-    pred_idx, pred_probs = predict_single_image(img_path)
-
     print("------------------------------------------------------------------")
     print("Algorithm: ", algorithm_name, "\nInput shape: ", input_shape, "\nNum classes: ", num_classes,
           "\nNum domains: ", num_domains, "\nHyper params: ", hparams)
     print("------------------------------------------------------------------")
 
-    print("Pred class index:", pred_idx)
-    print("Class prob vector:", pred_probs)
+    print("Pred class index:", pred_class)
+    print("Class prob vector:", probs)
 
     idx2name = {
         0: "dog",
@@ -91,24 +89,23 @@ def predict_single_image(img_path):
         6: "person"
     }
 
-    print(algorithm_name, ": This should be a: ", idx2name[pred_idx])
+    print(algorithm_name, ": This should be a: ", idx2name[pred_class]," softmax:",probs.squeeze())
 
     return pred_class,probs.squeeze().cpu()
 
 
-
-@torch.no_grad()
+@torch.inference_mode()
 def predict_images(algorithm_name,dictionary_path):
     images=[]
     exts = ["jpg","jpeg","png"]
     for ext in exts:
-        images.extend(glob.glob(os.path.join(dictionary_path, f"*{ext}")))
-        images.extend(glob.glob(os.path.join(dictionary_path, f"*{ext.upper()}")))
+        images.extend(glob.glob(os.path.join(dictionary_path, f"*.{ext}")))
+        images.extend(glob.glob(os.path.join(dictionary_path, f"*.{ext.upper()}")))
     images=sorted(images)
     print(f"[INFO] Found {len(images)} images in {dictionary_path}")
     print(f"[INFO] Using algorithm: {algorithm_name}")
     print("--------------------------------------------------")
-    probs_sum=torch.zeros(1,7)
+    probs_sum=torch.zeros(1,num_classes,device=device)
 
     image_num=0
     for img_path in images:
@@ -117,12 +114,14 @@ def predict_images(algorithm_name,dictionary_path):
         except Exception as e:
             print(f"[WARN] 跳过 {img_path}, 无法打开: {e}")
             continue
+
         image_num+=1
         x = preprocess_image(img_path)
         logits = model.predict(x)
         probs = torch.softmax(logits, dim=1)
         probs_sum+=probs
-    probs_res=probs_sum/image_num
+
+    probs_res=(probs_sum/image_num).detach().cpu()
     print(probs_res)
     return probs_res
 

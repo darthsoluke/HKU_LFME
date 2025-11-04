@@ -118,6 +118,66 @@ class ERM(Algorithm):
         return self.network(x)
 
 
+class LFME(Algorithm):
+    """
+    Learning from Multiple Experts for Domain Generalization
+    """
+
+    def __init__(self, input_shape, num_classes, num_domains, hparams):
+        super(LFME, self).__init__(input_shape, num_classes, num_domains, hparams)
+        self.MSEloss = nn.MSELoss()
+        self.expert_number = num_domains + 1
+        self.num_classes = num_classes
+        self.featurizer = [None] * self.expert_number
+        self.classifier = [None] * self.expert_number
+        self.network = [None] * self.expert_number
+        self.optimizer = [None] * self.expert_number
+        device = 'cuda'  # or 'cpu'
+        for i in range(self.expert_number):
+            self.featurizer[i] = networks.Featurizer(input_shape, self.hparams).to(device)
+            self.classifier[i] = networks.Classifier(self.featurizer[i].n_outputs,
+                                                     num_classes, self.hparams['nonlinear_classifier']).to(device)
+            self.network[i] = nn.Sequential(self.featurizer[i], self.classifier[i])
+            self.optimizer[i] = torch.optim.Adam(
+                self.network[i].parameters(),
+                lr=self.hparams["lr"],
+                weight_decay=self.hparams['weight_decay']
+            )
+
+    def update(self, minibatches, unlabeled=None):
+        all_x = torch.cat([x for x, y in minibatches])
+        all_y = torch.cat([y for x, y in minibatches])
+        expert = torch.zeros(all_y.shape[0], self.num_classes).to('cuda')
+        for i in range(self.expert_number - 1):
+            mmbatch = minibatches[i]
+            part_x, part_y = mmbatch[0], mmbatch[1]
+            result_expert = self.network[i](part_x)
+            loss = F.cross_entropy(result_expert, part_y)
+            self.optimizer[i].zero_grad()
+            loss.backward()
+            self.optimizer[i].step()
+            index, end = (i) * part_y.shape[0], (i + 1) * part_y.shape[0]
+            expert[index:end, :] = F.softmax(result_expert, dim=1)
+
+        result_target = self.network[-1](all_x)
+        loss_cla = F.cross_entropy(result_target, all_y)
+        loss_guid = self.MSEloss(result_target, expert.detach())
+        loss = loss_cla + loss_guid * self.hparams['lfe_reg']
+        self.optimizer[-1].zero_grad()
+        loss.backward()
+        self.optimizer[-1].step()
+        return {'loss': loss.item()}
+
+    def predict(self, x):
+        return self.network[-1](x)
+
+    def state_dict(self):
+        return self.network[-1].state_dict()
+
+    def load_state_dict(self, state_dict):
+        self.network[-1].load_state_dict(state_dict)
+
+
 class ERMPlus(ERM):
     " A Free Lunch for DG, introduced in LFME "
 
@@ -133,7 +193,7 @@ class ERMPlus(ERM):
         all_y_one_hot = F.one_hot(all_y, num_classes=logits.shape[1]).float()
         loss_mse = F.mse_loss(logits, all_y_one_hot)
 
-        loss = loss_ce + self.hparams['ermplus']*loss_mse
+        loss = loss_ce + self.hparams['ermplus'] * loss_mse
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -141,102 +201,6 @@ class ERMPlus(ERM):
 
         return {'loss': loss.item()}
 
-class LFME(Algorithm):
-    """
-    Learning from Multiple Experts for Domain Generalization
-    """
-    def __init__(self, input_shape, num_classes, num_domains, hparams):
-        super(LFME, self).__init__(input_shape, num_classes, num_domains, hparams)
-
-        self.MSEloss = nn.MSELoss()
-        self.expert_number = num_domains + 1
-        self.num_classes = num_classes
-
-        # 用 ModuleList 而不是普通 list
-        self.featurizers = nn.ModuleList()
-        self.classifiers = nn.ModuleList()
-        self.networks    = nn.ModuleList()
-
-        # 方便我们管理每个 expert 的 optimizer
-        self.optimizers = []
-
-        for i in range(self.expert_number):
-            f = networks.Featurizer(input_shape, self.hparams)
-            c = networks.Classifier(
-                    f.n_outputs,
-                    num_classes,
-                    self.hparams['nonlinear_classifier']
-                )
-            net = nn.Sequential(f, c)
-
-            self.featurizers.append(f)
-            self.classifiers.append(c)
-            self.networks.append(net)
-
-        # optimizers 要在所有 module 都注册完后再建
-        for i in range(self.expert_number):
-            opt_i = torch.optim.Adam(
-                self.networks[i].parameters(),
-                lr=self.hparams["lr"],
-                weight_decay=self.hparams['weight_decay']
-            )
-            self.optimizers.append(opt_i)
-
-    def update(self, minibatches, unlabeled=None):
-        """
-        minibatches: list of (x, y) for each source domain
-        expert 0..N-2 : domain-specific experts
-        expert N-1    : student that learns from them all
-        """
-        device = minibatches[0][0].device  # assume already moved to correct GPU
-
-        all_x = torch.cat([x for x, y in minibatches]).to(device)
-        all_y = torch.cat([y for x, y in minibatches]).to(device)
-
-        # 用来收集 teacher experts 的 soft targets
-        expert_soft = torch.zeros(
-            all_y.shape[0],
-            self.num_classes,
-            device=device
-        )
-
-        # 逐个 expert[i] (除了最后一个 student) 训练自己的网络
-        # 并把 softmax(prob) 作为"指导信号"拼到 expert_soft 里
-        for i in range(self.expert_number - 1):
-            part_x, part_y = minibatches[i]
-            part_x = part_x.to(device)
-            part_y = part_y.to(device)
-
-            logits_i = self.networks[i](part_x)
-            loss_i = F.cross_entropy(logits_i, part_y)
-
-            self.optimizers[i].zero_grad()
-            loss_i.backward()
-            self.optimizers[i].step()
-
-            # 把这个 expert 的预测概率拷贝到 expert_soft 对应区间
-            start = i * part_y.shape[0]
-            end   = (i + 1) * part_y.shape[0]
-            expert_soft[start:end, :] = F.softmax(logits_i, dim=1)
-
-        # 最后一个 expert 作为 student，吃所有拼起来的数据
-        student_idx = self.expert_number - 1
-        student_logits = self.networks[student_idx](all_x)
-
-        loss_cls = F.cross_entropy(student_logits, all_y)
-        loss_guid = self.MSEloss(student_logits, expert_soft.detach())
-        loss = loss_cls + loss_guid * self.hparams['lfe_reg']
-
-        self.optimizers[student_idx].zero_grad()
-        loss.backward()
-        self.optimizers[student_idx].step()
-
-        return {'loss': loss.item()}
-
-    def predict(self, x):
-        # 推理用最后一个 expert（student）
-        student_idx = self.expert_number - 1
-        return self.networks[student_idx](x)
 
 class CauseEB(Algorithm):
     """

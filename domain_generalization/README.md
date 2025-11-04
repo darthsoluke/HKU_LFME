@@ -25,7 +25,7 @@ Train a model:
 
 ```sh
 python -m domainbed.scripts.train\
-       --data_dir=./domainbed/data/PACS/\
+       --data_dir=./domainbed/data/pacs_data/\
        --algorithm LFME\
        --dataset PACS\
        --test_env 0
