@@ -38,8 +38,30 @@ def preprocess_image(image_path):
 Run reasoning
 """
 @torch.inference_mode()
-def predict_single_image(img_path,num_classes):
+def predict_single_image(img_path,num_classes,algorithm_name,test_excluded_env):
     x = preprocess_image(img_path)
+
+    ckpt_path = find_ckpt_path(algorithm_name, test_excluded_env)
+    ckpt = torch.load(ckpt_path, map_location=device)
+
+    algorithm_name = ckpt["args"]["algorithm"]
+    input_shape    = ckpt["model_input_shape"]
+    n_classes      = ckpt["model_num_classes"]  # 不要覆盖 classes 列表
+    num_domains    = ckpt["model_num_domains"]
+    hparams        = ckpt["model_hparams"]
+    state_dict     = ckpt["model_dict"]
+
+    AlgorithmClass = algorithms.get_algorithm_class(algorithm_name)
+
+    model = AlgorithmClass(
+        input_shape=input_shape,
+        num_classes=n_classes,
+        num_domains=num_domains,
+        hparams=hparams,
+    )
+    model.load_state_dict(state_dict)
+    model.to(device)
+    model.eval()
     logits = model.predict(x)
     probs = torch.softmax(logits,dim = 1)
     pred_class = probs.argmax(dim=1).item()
@@ -130,14 +152,11 @@ def find_ckpt_path(algo: str, te: int) -> str:
         raise FileNotFoundError(f"未找到 ckpt: {path}")
     return path
 
-if __name__ == "__main__":
-
+def output_reasoning_results_to_csv():
     reasoning_algo_order = ["LFME", "ERM", "CORAL", "Mixup"]
-    domains = ["art_painting","cartoon","photo","sketch"]
-    classes = ["dog","elephant","giraffe","guitar","house","horse","person"]
-    test_envs = [0,1,2,3]
-
-
+    domains = ["art_painting", "cartoon", "photo", "sketch"]
+    classes = ["dog", "elephant", "giraffe", "guitar", "house", "horse", "person"]
+    test_envs = [0, 1, 2, 3]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     out_dir = os.path.join(domainbed_path, "Reasoning_tables")
@@ -154,11 +173,11 @@ if __name__ == "__main__":
             ckpt = torch.load(ckpt_path, map_location=device)
 
             algorithm_name = ckpt["args"]["algorithm"]
-            input_shape    = ckpt["model_input_shape"]
-            n_classes      = ckpt["model_num_classes"]  # 不要覆盖 classes 列表
-            num_domains    = ckpt["model_num_domains"]
-            hparams        = ckpt["model_hparams"]
-            state_dict     = ckpt["model_dict"]
+            input_shape = ckpt["model_input_shape"]
+            n_classes = ckpt["model_num_classes"]  # 不要覆盖 classes 列表
+            num_domains = ckpt["model_num_domains"]
+            hparams = ckpt["model_hparams"]
+            state_dict = ckpt["model_dict"]
 
             AlgorithmClass = algorithms.get_algorithm_class(algorithm_name)
             model = AlgorithmClass(
@@ -175,7 +194,8 @@ if __name__ == "__main__":
             for domain in domains:
                 for entity in classes:
                     img_dic_path = os.path.join(domainbed_path, "data/pacs_data/pacs_data", domain, entity)
-                    probs_res = predict_images(algorithm_name=reasoning_algo, num_classes=7,dictionary_path=img_dic_path)
+                    probs_res = predict_images(algorithm_name=reasoning_algo, num_classes=7,
+                                               dictionary_path=img_dic_path)
                     cell_str = "N/A" if probs_res is None else str(probs_res)
                     df.loc[(entity, te), domain] = cell_str
 
@@ -185,5 +205,8 @@ if __name__ == "__main__":
         print(f"[INFO] 已写出：{csv_path}")
 
 
+if __name__ == "__main__":
+   # output_reasoning_results_to_csv()
+    predict_single_image(img_path, 4,"LFME",0)
 
 

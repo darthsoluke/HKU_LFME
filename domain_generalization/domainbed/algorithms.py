@@ -132,7 +132,8 @@ class LFME(Algorithm):
         self.classifier = [None] * self.expert_number
         self.network = [None] * self.expert_number
         self.optimizer = [None] * self.expert_number
-        device = 'cuda'  # or 'cpu'
+        #device = 'cuda'  # or 'cpu'
+        device = torch.device("gpu"if torch.cuda.is_available() else "cpu")
         for i in range(self.expert_number):
             self.featurizer[i] = networks.Featurizer(input_shape, self.hparams).to(device)
             self.classifier[i] = networks.Classifier(self.featurizer[i].n_outputs,
