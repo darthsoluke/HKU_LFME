@@ -1,0 +1,5 @@
+# 忽略所有 __pycache__ 目录
+*/_pycache_/
+
+# 忽略用于存放训练后模型的outputs目录
+/outputs/
