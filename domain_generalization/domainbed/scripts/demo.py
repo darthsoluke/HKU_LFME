@@ -38,10 +38,11 @@ def preprocess_image(image_path):
 Run reasoning
 """
 @torch.inference_mode()
-def predict_single_image(img_path,num_classes,algorithm_name,test_excluded_env):
+def predict_single_image(img_path, algorithm_name, test_excluded_env):
     x = preprocess_image(img_path)
 
     ckpt_path = find_ckpt_path(algorithm_name, test_excluded_env)
+    print(f"[INFO] Loading checkpoint from {ckpt_path}")
     ckpt = torch.load(ckpt_path, map_location=device)
 
     algorithm_name = ckpt["args"]["algorithm"]
@@ -67,7 +68,7 @@ def predict_single_image(img_path,num_classes,algorithm_name,test_excluded_env):
     pred_class = probs.argmax(dim=1).item()
 
     print("------------------------------------------------------------------")
-    print("Algorithm: ", algorithm_name, "\nInput shape: ", input_shape, "\nNum classes: ", num_classes,
+    print("Algorithm: ", algorithm_name, "\nInput shape: ", input_shape, "\nNum classes: ", n_classes,
           "\nNum domains: ", num_domains, "\nHyper params: ", hparams)
     print("------------------------------------------------------------------")
 
@@ -146,8 +147,11 @@ def plot_bar_graph_pacs(probs_res,title="PACS"):
 
 
 def find_ckpt_path(algo: str, te: int) -> str:
+    # 使用基于domainbed目录的绝对路径，确保无论从哪里调用都能找到正确的文件
     # 按你的命名：outputs/{ALGO}/{ALGO}_te{te}/PACS{ALGO}domain_generalization0None[{te}].pkl
-    path = os.path.join("outputs", algo, f"{algo}_te{te}", f"PACS{algo}domain_generalization0None[{te}].pkl")
+    # 构建完整的绝对路径，从domainbed的父目录开始
+    domain_generalization_path = os.path.dirname(domainbed_path)
+    path = os.path.join(domain_generalization_path, "outputs", algo, f"{algo}_te{te}", f"PACS{algo}domain_generalization0None[{te}].pkl")
     if not os.path.isfile(path):
         raise FileNotFoundError(f"未找到 ckpt: {path}")
     return path
@@ -207,6 +211,6 @@ def output_reasoning_results_to_csv():
 
 if __name__ == "__main__":
    # output_reasoning_results_to_csv()
-    predict_single_image(img_path, 4,"LFME",0)
+    predict_single_image(test_data, "LFME",0)
 
 
