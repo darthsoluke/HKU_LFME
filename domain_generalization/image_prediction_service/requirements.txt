@@ -1,0 +1,8 @@
+flask
+pillow
+numpy
+gunicorn
+flask_cors
+torch
+torchvision
+matplotlib
