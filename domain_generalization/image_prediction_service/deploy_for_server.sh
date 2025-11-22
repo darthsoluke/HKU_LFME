@@ -67,7 +67,7 @@ echo "Starting new container with latest image..."
 docker run -d \
     --name ${CONTAINER_NAME} \
     -p ${PORT_MAPPING} \
-    --restart unless-stopped \
+    --restart on-failure:5 \
     ${REPO_URL}:latest
 
 if [ $? -ne 0 ]; then
@@ -81,5 +81,28 @@ echo "Container ID: $(docker ps -q -f name=${CONTAINER_NAME})"
 echo "Service running on port: ${PORT_MAPPING}"
 echo "To view logs: docker logs -f ${CONTAINER_NAME}"
 echo "To stop the service: docker stop ${CONTAINER_NAME}"
+
+# Step 6: Clean up old images (keep only latest 3 versions)
+echo "Cleaning up old images (keeping latest 3 versions)..."
+
+# Get all image tags for this repository
+echo "Current images before cleanup:"
+docker images ${REPO_URL} --format "table {{.Tag}}\t{{.Size}}\t{{.CreatedSince}}"
+
+# Get the 3 most recent image tags (excluding <none>)
+KEEP_TAGS=$(docker images ${REPO_URL} --format "{{.Tag}}\t{{.CreatedAt}}" | grep -v "<none>" | sort -r -k2 | head -n 3 | cut -f1)
+
+echo "Keeping these tags: ${KEEP_TAGS}"
+
+# Remove images that are not in the keep list
+docker images ${REPO_URL} --format "{{.Tag}}" | grep -v "<none>" | while read tag; do
+    if ! echo "${KEEP_TAGS}" | grep -q "${tag}"; then
+        echo "Removing old image: ${REPO_URL}:${tag}"
+        docker rmi ${REPO_URL}:${tag} 2>/dev/null || echo "Failed to remove ${REPO_URL}:${tag} (may be in use)"
+    fi
+done
+
+echo "Images after cleanup:"
+docker images ${REPO_URL} --format "table {{.Tag}}\t{{.Size}}\t{{.CreatedSince}}"
 
 echo "\nDeployment completed successfully!"

@@ -15,26 +15,15 @@ import torch
 import numpy as np
 from torch.jit import script
 
-# 现在直接从domainbed导入，因为domainbed是一个有效的Python包
+# 直接从本地predictor模块导入，避免domainbed模块导入问题
 try:
-    # 有两种可能的导入方式
-    try:
-        # 方式1：如果domain_generalization被视为包路径的一部分
-        from domain_generalization.domainbed.scripts import demo
-    except ImportError:
-        # 方式2：直接从domainbed导入（因为我们已经将项目根目录添加到路径）
-        sys.path.insert(0, os.path.dirname(current_dir))  # 添加domain_generalization到路径
-        from domainbed.scripts import demo
-    
-    print(f"成功导入demo模块，当前Python路径: {sys.path}")
+    from predictor import predict_single_image
+    print(f"成功导入predictor模块")
 except ImportError as e:
-    print(f"导入demo模块失败: {e}")
+    print(f"导入predictor模块失败: {e}")
     print(f"当前工作目录: {os.getcwd()}")
     print(f"当前Python路径: {sys.path}")
     raise
-# 从predictor模块导入predict_single_image函数
-# from predictor import predict_single_image
-from domain_generalization.domainbed.scripts.demo import predict_single_image
 
 app = Flask(__name__, static_folder='frontend', static_url_path='/')
 # 配置CORS，允许所有路径的跨域请求

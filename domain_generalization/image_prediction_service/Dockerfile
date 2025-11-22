@@ -12,17 +12,21 @@ RUN apt-get update && apt-get install -y \
 
 # 复制requirements.txt文件并安装依赖
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# 复制所有服务文件到工作目录
+# 复制当前服务文件到工作目录
 COPY . .
+
+# 复制模型文件
+COPY outputs /app/outputs
 
 # 复制前端代码到后端静态文件目录
 RUN mkdir -p static
 COPY frontend/* static/
 
 # 修改前端API调用地址为容器内部地址（相对路径）
-RUN sed -i "s|baseUrl: 'http://localhost:10000'|baseUrl: '/'|g" static/script.js
+RUN sed -i "s|baseUrl: 'http://localhost:10000'|baseUrl: ''|g" static/script.js
 
 # 创建uploads目录
 RUN mkdir -p uploads
@@ -34,5 +38,5 @@ ENV FLASK_ENV=production
 # 暴露端口10000
 EXPOSE 10000
 
-# 使用Gunicorn作为WSGI服务器启动应用
-CMD gunicorn --bind 0.0.0.0:10000 app:app
+# 使用Flask开发服务器启动应用
+CMD python -m flask run --host=0.0.0.0 --port=10000

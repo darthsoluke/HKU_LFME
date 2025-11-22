@@ -10,11 +10,20 @@ REM 请更换为您自己的镜像名称
 set IMAGE_NAME=lfme-demo-fullstack
 set REPO_URL=%REGISTRY%/%NAMESPACE%/%IMAGE_NAME%
 
-REM Docker Credentials
 REM 请添加您自己的Docker账密
 REM 注意：生产环境中建议使用环境变量或Docker credential store
 set DOCKER_USERNAME=
 set DOCKER_PASSWORD=
+REM 已移除硬编码凭证，请使用环境变量
+REM Docker Credentials
+if "%DOCKER_USERNAME%"=="" (
+    echo 错误: 请设置环境变量 DOCKER_USERNAME
+    exit /b 1
+)
+if "%DOCKER_PASSWORD%"=="" (
+    echo 错误: 请设置环境变量 DOCKER_PASSWORD
+    exit /b 1
+)
 
 REM Generate timestamp in format YYYYMMDDHHMM using PowerShell
 REM This method is more reliable across different Windows locales
@@ -33,6 +42,7 @@ echo Timestamp Tag: %TIMESTAMP_TAG%
 
 echo.
 echo Building Docker image...
+REM 直接在image_prediction_service目录构建，包含本地outputs模型文件
 docker build -t %LATEST_TAG% -t %TIMESTAMP_TAG% .
 if %errorlevel% neq 0 (
     echo Build failed!
