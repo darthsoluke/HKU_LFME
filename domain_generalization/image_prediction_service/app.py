@@ -64,7 +64,7 @@ def allowed_file(filename):
 @app.route('/api/predict', methods=['POST'])
 def api_predict():
     """
-    API接口，处理图像上传并返回JSON格式的预测结果
+    API接口，处理图像上传并返回单个模型的JSON格式预测结果
     """
     try:
         # 添加日志记录请求信息
@@ -95,12 +95,11 @@ def api_predict():
             temp_path = temp.name
         
         # 获取其他参数
-        # 注意：demo.py中的predict_single_image参数顺序为(img_path, algorithm_name, test_excluded_env)
         algorithm = request.form.get('algorithm', 'LFME')
         test_excluded_env = int(request.form.get('seed', 0))  # 使用seed参数作为test_excluded_env
         
         try:
-            # 调用预测函数，移除num_classes参数
+            # 调用预测函数
             pred_class, probs = predict_single_image(temp_path, algorithm, test_excluded_env)
 
             print(f"预测结果: pred_class={pred_class}, probs={probs}")
@@ -112,28 +111,123 @@ def api_predict():
             # 类别名称映射
             category_names = ['dog', 'elephant', 'giraffe', 'guitar', 'horse', 'house', 'person']
             
-            # 转换概率为百分比并保留两位小数
-            if isinstance(probs, torch.Tensor):
-                probabilities = [round(float(p) * 100, 2) for p in probs.tolist()]
-            else:
-                probabilities = [round(float(p) * 100, 2) for p in probs]
-            
-            # 获取预测类别对应的概率作为置信度
-            if isinstance(probs, torch.Tensor):
-                confidence = float(probs[int(pred_class)].item())
-            else:
-                confidence = float(probs[int(pred_class)])
-                
-            # 构建简化的响应格式，只包含预测类别和概率信息
+            # 构建响应格式
             response = {
-                'predicted_class': int(pred_class),  # 预测的类别ID
-                'all_probabilities': [float(p) for p in probs] if not isinstance(probs, torch.Tensor) else [float(p) for p in probs.tolist()]  # 所有类别的概率数组
+                'algorithm': algorithm,
+                'predicted_class': int(pred_class),
+                'predicted_class_name': category_names[int(pred_class)],
+                'all_probabilities': [float(p) for p in probs] if not isinstance(probs, torch.Tensor) else [float(p) for p in probs.tolist()],
+                'confidence': float(probs[int(pred_class)])
             }
             
             # 返回预测结果
             return jsonify(response)
         except Exception as e:
             print(f"预测错误: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+        finally:
+            # 确保删除临时文件
+            try:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
+            except:
+                pass
+        
+    except Exception as e:
+        print(f"请求处理错误: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/predict-all', methods=['POST'])
+def api_predict_all():
+    """
+    根据用户选择的模型进行预测，返回对比结果
+    """
+    try:
+        # 添加日志记录请求信息
+        print(f"收到多模型预测API请求: {request.method} {request.url}")
+        print(f"请求参数: {dict(request.form)}")
+        
+        # 检查是否有文件上传
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        
+        # 检查文件名是否为空
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # 检查文件类型
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Unsupported file type'}), 400
+        
+        # 创建临时文件进行预测
+        with tempfile.NamedTemporaryFile(suffix='.' + file.filename.rsplit('.', 1)[1].lower(), delete=False) as temp:
+            file.save(temp.name)
+            temp_path = temp.name
+        
+        # 获取参数
+        test_excluded_env = int(request.form.get('seed', 1))
+        
+        # 获取选中的模型列表，支持多选
+        selected_models = request.form.getlist('models')
+        
+        # 如果没有选中模型，则使用默认的所有模型
+        if not selected_models:
+            algorithms = ['LFME', 'ERM', 'CORAL', 'Mixup']
+        else:
+            # 过滤出有效的模型名称
+            algorithms = [model for model in selected_models if model in AVAILABLE_MODELS]
+            
+            # 如果过滤后没有有效模型，则返回错误
+            if not algorithms:
+                return jsonify({'error': 'No valid models selected'}), 400
+        
+        print(f"选中的模型: {algorithms}")
+        
+        try:
+            results = []
+            
+            # 调用选中的模型进行预测
+            for algorithm in algorithms:
+                try:
+                    pred_class, probs = predict_single_image(temp_path, algorithm, test_excluded_env)
+                    
+                    # 类别名称映射
+                    category_names = ['dog', 'elephant', 'giraffe', 'guitar', 'horse', 'house', 'person']
+                    
+                    result = {
+                        'algorithm': algorithm,
+                        'predicted_class': int(pred_class),
+                        'predicted_class_name': category_names[int(pred_class)],
+                        'all_probabilities': [float(p) for p in probs] if not isinstance(probs, torch.Tensor) else [float(p) for p in probs.tolist()],
+                        'confidence': float(probs[int(pred_class)]),
+                        'status': 'success'
+                    }
+                    results.append(result)
+                    
+                    print(f"{algorithm}模型预测完成: {category_names[int(pred_class)]} (置信度: {float(probs[int(pred_class)]):.4f})")
+                    
+                except Exception as e:
+                    print(f"{algorithm}模型预测失败: {str(e)}")
+                    results.append({
+                        'algorithm': algorithm,
+                        'error': str(e),
+                        'status': 'error'
+                    })
+            
+            # 构建对比响应
+            response = {
+                'comparison_results': results,
+                'total_models': len(algorithms),
+                'successful_models': len([r for r in results if r['status'] == 'success'])
+            }
+            
+            print(f"多模型预测完成: {response['successful_models']}/{response['total_models']} 个模型成功")
+            
+            return jsonify(response)
+        except Exception as e:
+            print(f"多模型预测错误: {str(e)}")
             return jsonify({'error': str(e)}), 500
         finally:
             # 确保删除临时文件

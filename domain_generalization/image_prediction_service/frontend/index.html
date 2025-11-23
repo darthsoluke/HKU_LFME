@@ -95,11 +95,28 @@
                 </div>
                     
                     <div class="upload-area" id="uploadArea">
-                        <div class="upload-placeholder">
+                        <div class="upload-placeholder" id="uploadPlaceholder">
                             <i class="fas fa-image"></i>
                             <p id="uploadPlaceholderText">Click to select image or drag image here</p>
                             <span class="file-types" id="fileTypes">Supports JPG, PNG, JPEG formats</span>
                         </div>
+                        <div class="selected-image" id="selectedImage" style="display: none;">
+                            <div class="selected-image-header">
+                                <i class="fas fa-eye"></i>
+                                <span id="selectedImageHeaderText">Image Preview</span>
+                            </div>
+                            <div class="selected-image-preview">
+                                <div class="image-container">
+                                    <img id="uploadPreviewImage" src="" alt="Selected Image">
+                                </div>
+                                <div class="selected-image-info">
+                                    <h4 id="selectedImageName">-</h4>
+                                    <p id="selectedImageSize">-</p>
+                                    <p id="selectedImageType">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                         <div class="upload-tips">
                             <i class="fas fa-info-circle"></i>
                             <span id="uploadTips">Supported formats: JPG, PNG, GIF | Max size: 5MB</span>
@@ -107,7 +124,7 @@
                         <input type="file" id="fileInput" accept="image/*" style="display: none;">
                     </div>
                     
-                    <button class="upload-btn" id="uploadBtn" disabled>
+                    <button class="upload-btn" id="uploadBtn">
                         <i class="fas fa-upload"></i>
                         <span id="uploadButton">Start Analysis</span>
                     </button>
@@ -144,15 +161,48 @@
             </section>
 
             <!-- Results Section -->
-            <section class="results-section" id="resultsSection" style="display: none;">
+            <section class="results-section" id="resultsSection" style="display: none; padding:20px">
                 <div class="results-card">
                     <h2><i class="fas fa-chart-bar"></i> <span id="resultsTitle">Prediction Results</span></h2>
+                    
+                    <!-- 多模型对比设置 -->
+                    <div class="comparison-settings">
+                        <h3 id="comparisonSettingsTitle">模型对比设置</h3>
+                        <div class="model-list">
+                            <div class="model-item">
+                                <input type="checkbox" id="modelLFME" checked>
+                                <label for="modelLFME">LFME</label>
+                            </div>
+                            <div class="model-item">
+                                <input type="checkbox" id="modelERM" checked>
+                                <label for="modelERM">ERM</label>
+                            </div>
+                            <div class="model-item">
+                                <input type="checkbox" id="modelCORAL" checked>
+                                <label for="modelCORAL">CORAL</label>
+                            </div>
+                            <div class="model-item">
+                                <input type="checkbox" id="modelMixup" checked>
+                                <label for="modelMixup">Mixup</label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label for="comparisonSeed" id="comparisonSeedLabel">测试排除环境 (Test Excluded Env):</label>
+                            <select id="comparisonSeed">
+                                <option value="0">0 - art_painting (艺术绘画)</option>
+                                <option value="1" selected>1 - cartoon (卡通)</option>
+                                <option value="2">2 - photo (照片)</option>
+                                <option value="3">3 - sketch (素描)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="results-explanation">
                         <i class="fas fa-lightbulb"></i>
                         <span id="resultsExplanation">Analysis results based on multi-expert domain generalization model, showing the probability distribution of each category</span>
                     </div>
                     <div class="results-content">
-                        <div class="loading-spinner" id="loadingSpinner">
+                        <div class="loading-spinner" id="loadingSpinner" style="display: none;">
                             <div class="spinner"></div>
                             <p id="analyzing">Analyzing...</p>
                         </div>
@@ -180,6 +230,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script_new.js"></script>
 </body>
 </html>
