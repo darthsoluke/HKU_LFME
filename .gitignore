@@ -3,3 +3,6 @@ __pycache__/
 
 # 忽略用于存放训练后模型的outputs目录
 outputs/
+
+# 忽略npm安装依赖node_modules目录
+node_modules/
