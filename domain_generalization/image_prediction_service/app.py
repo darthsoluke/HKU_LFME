@@ -25,7 +25,7 @@ except ImportError as e:
     print(f"当前Python路径: {sys.path}")
     raise
 
-app = Flask(__name__, static_folder='frontend', static_url_path='/')
+app = Flask(__name__, static_folder='frontend_builded', static_url_path='/')
 # 配置CORS，允许所有路径的跨域请求
 CORS(app, resources={r"/*": {"origins": ["*"], "allow_headers": ["*"], "expose_headers": ["*"], "supports_credentials": True}})
 
@@ -146,12 +146,14 @@ def api_predict_all():
         # 添加日志记录请求信息
         print(f"收到多模型预测API请求: {request.method} {request.url}")
         print(f"请求参数: {dict(request.form)}")
+        print(f"请求文件列表: {list(request.files.keys())}")
         
         # 检查是否有文件上传
         if 'file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
         
         file = request.files['file']
+        print(f"找到文件: {file.filename}, 类型: {file.content_type}")
         
         # 检查文件名是否为空
         if file.filename == '':
@@ -171,9 +173,11 @@ def api_predict_all():
         
         # 获取选中的模型列表，支持多选
         selected_models = request.form.getlist('models')
+        print(f"原始models参数: {selected_models}")
         
-        # 如果没有选中模型，则使用默认的所有模型
-        if not selected_models:
+        # 处理models参数为'on'的情况，这通常是由于前端复选框没有正确设置value导致的
+        if selected_models == ['on'] or not selected_models:
+            print("检测到models参数为'on'或为空，默认使用所有支持的模型")
             algorithms = ['LFME', 'ERM', 'CORAL', 'Mixup']
         else:
             # 过滤出有效的模型名称
