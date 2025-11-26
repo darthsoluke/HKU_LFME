@@ -41,8 +41,45 @@ echo Latest Tag: %LATEST_TAG%
 echo Timestamp Tag: %TIMESTAMP_TAG%
 
 echo.
+echo Building frontend...
+REM 删除frontend_builded目录内容
+if exist frontend_builded\* (
+    echo Deleting existing frontend_builded files...
+    rmdir /s /q frontend_builded
+)
+
+REM 确保frontend_builded目录存在
+mkdir frontend_builded
+
+REM 在vue-frontend目录中构建前端
+echo Current directory before cd: %CD%
+cd vue-frontend
+echo Current directory after cd: %CD%
+
+call npm run build
+if %errorlevel% neq 0 (
+    echo Frontend build failed!
+    exit /b 1
+)
+
+REM 构建完成后，前端文件已经直接输出到../frontend_builded目录
+cd ..
+echo Current directory after returning: %CD%
+
+echo Frontend build successful!
+
+echo.
 echo Building Docker image...
 REM 直接在image_prediction_service目录构建，包含本地outputs模型文件
+REM 使用Docker的标准缓存机制，requirements.txt不变就不会重新安装依赖
+REM 优化说明：镜像已优化，使用CPU版本PyTorch、深度清理缓存、最小化依赖
+echo Docker Image Optimization Info:
+echo - Using CPU-only PyTorch to reduce image size
+echo - Deep cleaning pip cache and temporary files
+echo - Minimal system dependencies installation
+echo - Expected image size: ~11.5GB
+echo.
+
 docker build -t %LATEST_TAG% -t %TIMESTAMP_TAG% .
 if %errorlevel% neq 0 (
     echo Build failed!
@@ -50,6 +87,14 @@ if %errorlevel% neq 0 (
 )
 
 echo Build successful!
+
+REM 显示镜像大小信息
+echo.
+echo Checking image size after build...
+docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | findstr %IMAGE_NAME%
+if %errorlevel% neq 0 (
+    echo Warning: Unable to get image size information
+)
 
 echo.
 echo Logging into registry...

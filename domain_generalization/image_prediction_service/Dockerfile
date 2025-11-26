@@ -1,41 +1,34 @@
-# 使用Python 3.10作为基础镜像
+# 使用slim镜像并优化依赖管理
 FROM python:3.10-slim
 
-# 设置工作目录
+# 安装最小系统依赖
+RUN apt-get update && apt-get install -y \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/tmp/*
+
 WORKDIR /app
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# 复制requirements.txt文件并安装依赖
+# 复制依赖文件
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
 
-# 复制当前服务文件到工作目录
-COPY . .
+# 安装Python依赖（最小化安装）
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --no-deps torch torchvision \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip cache purge \
+    && find /usr/local/lib/python3.10 -name "__pycache__" -type d -exec rm -rf {} + \
+    && find /usr/local/lib/python3.10 -name "*.pyc" -delete
 
-# 复制模型文件
-COPY outputs /app/outputs
+# 复制应用文件
+COPY app.py predictor.py start_service.py ./
+COPY frontend_builded/ frontend_builded/
 
-# 复制前端代码到后端静态文件目录
-RUN mkdir -p static
-COPY frontend/* static/
-
-# 修改前端API调用地址为容器内部地址（相对路径）
-RUN sed -i "s|baseUrl: 'http://localhost:10000'|baseUrl: ''|g" static/script.js
-
-# 创建uploads目录
+# 创建上传目录
 RUN mkdir -p uploads
 
-# 设置环境变量
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
-
-# 暴露端口10000
+# 暴露端口
 EXPOSE 10000
 
 # 使用Flask开发服务器启动应用

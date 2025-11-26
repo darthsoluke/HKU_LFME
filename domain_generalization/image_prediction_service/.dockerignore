@@ -1,0 +1,23 @@
+# 排除不必要的模型文件
+outputs/*.txt
+outputs/*.log
+outputs/*.tmp
+
+# 排除开发文件
+.git
+.gitignore
+*.bat
+*.sh
+
+# 排除缓存目录
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# 排除前端开发文件
+vue-frontend/
+node_modules/
+
+# 排除上传文件
+uploads/*

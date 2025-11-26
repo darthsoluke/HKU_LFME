@@ -37,12 +37,26 @@ echo "Login successful!"
 
 # Step 2: Pull the latest image
 echo "Pulling latest image from ${REPO_URL}:latest..."
+echo "Docker Image Optimization Info:"
+echo "- Using CPU-only PyTorch to reduce image size"
+echo "- Deep cleaning pip cache and temporary files"
+echo "- Minimal system dependencies installation"
+echo "- Expected image size: ~11.5GB"
+echo
+
 docker pull ${REPO_URL}:latest
 if [ $? -ne 0 ]; then
     echo "Failed to pull image!"
     exit 1
 fi
 echo "Image pulled successfully!"
+
+# 显示镜像大小信息
+echo "Checking image size after pull..."
+docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep ${IMAGE_NAME}
+if [ $? -ne 0 ]; then
+    echo "Warning: Unable to get image size information"
+fi
 
 # Step 3: Stop and remove existing container if running
 echo "Checking for existing container..."
