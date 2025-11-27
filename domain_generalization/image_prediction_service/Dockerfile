@@ -15,7 +15,6 @@ COPY requirements.txt .
 
 # 安装Python依赖（最小化安装）
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir --no-deps torch torchvision \
     && pip install --no-cache-dir -r requirements.txt \
     && pip cache purge \
     && find /usr/local/lib/python3.10 -name "__pycache__" -type d -exec rm -rf {} + \
@@ -24,6 +23,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 # 复制应用文件
 COPY app.py predictor.py start_service.py ./
 COPY frontend_builded/ frontend_builded/
+COPY outputs/ outputs/
 
 # 创建上传目录
 RUN mkdir -p uploads
@@ -32,4 +32,4 @@ RUN mkdir -p uploads
 EXPOSE 10000
 
 # 使用Flask开发服务器启动应用
-CMD python -m flask run --host=0.0.0.0 --port=10000
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=10000"]
