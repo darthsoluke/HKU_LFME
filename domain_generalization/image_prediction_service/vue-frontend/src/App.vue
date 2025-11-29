@@ -143,7 +143,7 @@
               </div>
             </div>
             <div class="setting-item">
-              <label for="comparisonSeed">{{ $t('comparisonSeedLabel') }}</label>
+              <label for="comparisonSeed">{{ $t('testExcludeEnvLabel') }}</label>
               <select id="comparisonSeed" v-model="selectedSeed">
                 <option value="0">0 - {{ getDomainDisplayName('art_painting') }}</option>
                 <option value="1">1 - {{ getDomainDisplayName('cartoon') }}</option>
@@ -237,7 +237,7 @@ export default {
     const showResults = ref(false)
     const predictionResults = ref(null)
     const selectedModels = ref(['LFME', 'ERM', 'CORAL', 'Mixup'])
-    const selectedSeed = ref('1')
+    const selectedSeed = ref('2')
     const fileInput = ref(null)
     
     // Toast通知

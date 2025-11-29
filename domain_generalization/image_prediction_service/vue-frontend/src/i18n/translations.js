@@ -27,7 +27,7 @@ export const translations = {
     // 结果部分
     resultsTitle: 'Prediction Results',
     comparisonSettingsTitle: 'Comparison Settings',
-    comparisonSeedLabel: 'Comparison Seed:',
+    testExcludeEnvLabel: 'Test Exclude Env:',
     resultsExplanation: 'Analysis results based on multi-expert domain generalization model, showing the probability distribution of each category',
     analyzing: 'Analyzing...',
     confidenceTitle: 'Prediction Confidence',
@@ -109,7 +109,7 @@ export const translations = {
     // 结果部分
     resultsTitle: '预测结果',
     comparisonSettingsTitle: '比较设置',
-    comparisonSeedLabel: '比较种子:',
+    testExcludeEnvLabel: '测试排除环境:',
     resultsExplanation: '基于多专家域泛化模型的分析结果，显示图像各类别的可能性分布',
     analyzing: '正在分析中...',
     confidenceTitle: '预测置信度',
